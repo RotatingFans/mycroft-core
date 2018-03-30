@@ -1,3 +1,4 @@
+
 # Copyright 2017 Mycroft AI Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,6 +69,7 @@ class PocketsphinxHotWord(HotWordEngine):
         self.phonemes = self.config.get("phonemes", "HH EY . M AY K R AO F T")
         self.num_phonemes = len(self.phonemes.split())
         self.threshold = self.config.get("threshold", 1e-90)
+        self.sample_rate = self.listener_config.get("sample_rate", 1600)
         self.sample_rate = self.listener_config.get("sample_rate", 1600)
         dict_name = self.create_dict(self.key_phrase, self.phonemes)
         config = self.create_config(dict_name, Decoder.default_config())

@@ -20,15 +20,16 @@ from pyee import EventEmitter
 from requests import RequestException, HTTPError
 from requests.exceptions import ConnectionError
 
-from mycroft import dialog
+import mycroft.dialog
 from mycroft.client.speech.hotword_factory import HotWordFactory
-from mycroft.client.speech.mic import MutableMicrophone, ResponsiveRecognizer
+# from mycroft.client.speech.mic import MutableMicrophone, ResponsiveRecognizer
+from mycroft.client.speech.UDPmic import MutableUDPMicrophone, ResponsiveRecognizer
 from mycroft.configuration import Configuration
 from mycroft.metrics import MetricsAggregator, Stopwatch, report_timing
 from mycroft.session import SessionManager
 from mycroft.stt import STTFactory
-from mycroft.util import connected
 from mycroft.util.log import LOG
+
 if sys.version_info[0] < 3:
     from Queue import Queue, Empty
 else:
@@ -160,21 +161,20 @@ class AudioConsumer(Thread):
                            'stt': self.stt.__class__.__name__})
 
     def transcribe(self, audio):
+        text = None
         try:
             # Invoke the STT engine on the audio clip
             text = self.stt.execute(audio).lower().strip()
             LOG.debug("STT: " + text)
-            return text
         except sr.RequestError as e:
             LOG.error("Could not request Speech Recognition {0}".format(e))
         except ConnectionError as e:
             LOG.error("Connection Error: {0}".format(e))
-
             self.emitter.emit("recognizer_loop:no_internet")
         except HTTPError as e:
             if e.response.status_code == 401:
+                text = "pair my device"  # phrase to start the pairing process
                 LOG.warning("Access Denied at mycroft.ai")
-                return "pair my device"  # phrase to start the pairing process
             else:
                 LOG.error(e.__class__.__name__ + ': ' + str(e))
         except RequestException as e:
@@ -186,12 +186,7 @@ class AudioConsumer(Thread):
             else:
                 LOG.error(e)
             LOG.error("Speech Recognition could not understand audio")
-            return None
-        if connected():
-            dialog_name = 'backend.down'
-        else:
-            dialog_name = 'not connected to the internet'
-        self.emitter.emit('speak', {'utterance': dialog.get(dialog_name)})
+        return text
 
     def __speak(self, utterance):
         payload = {
@@ -229,9 +224,8 @@ class RecognizerLoop(EventEmitter):
         self.config = config.get('listener')
         rate = self.config.get('sample_rate')
         device_index = self.config.get('device_index')
-
-        self.microphone = MutableMicrophone(device_index, rate,
-                                            mute=self.mute_calls > 0)
+        self.microphone = MutableUDPMicrophone(16000, 1280, False)
+        # self.microphone = MutableMicrophone(device_index, rate, mute=self.mute_calls > 0)
         # FIXME - channels are not been used
         self.microphone.CHANNELS = self.config.get('channels')
         self.wakeword_recognizer = self.create_wake_word_recognizer()
