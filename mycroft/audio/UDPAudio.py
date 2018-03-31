@@ -15,6 +15,7 @@ def playAudio(audio):
     try:
         LOG.info("Connection Status" + str(udp_socket.connect_ex(("192.168.1.5", 50006))))
         udp_socket.setblocking(0)
+        udp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, 184)
         send = True
 
         retries = 0
@@ -34,7 +35,11 @@ def playAudio(audio):
             return
         udp_socket.setblocking(1)
         for buf in audio:
-            udp_socket.sendall(buf)
+            sent = 0
+            while sent < len(buf):
+                sent += udp_socket.send(buf[sent:sent + 512])
+                # LOG.info("sent " + str(sent) + " out of " + str(len(buf)) + " bytes")
+
         udp_socket.setblocking(0)
         send = True
         retries = 0
