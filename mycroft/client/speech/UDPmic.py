@@ -45,14 +45,13 @@ from mycroft.util import (
     play_wav
 )
 from mycroft.util.log import LOG
-
+from mycroft.audio import UDPAudio
 
 class MutableUDPStream(object):
     def __init__(self, udp_sock, format, muted=False):
         assert udp_sock is not None
         self.udp_sock = udp_sock
         self.muted = muted
-
         self.SAMPLE_WIDTH = pyaudio.get_sample_size(format)
         self.muted_buffer = b''.join([b'\x00' * self.SAMPLE_WIDTH])
 
@@ -76,6 +75,8 @@ class MutableUDPStream(object):
         """
         frames = []
         soundData, addr = self.udp_sock.recvfrom(size * 2 * 2)
+        if addr not in UDPAudio.clients:
+            UDPAudio.clients.append(addr)
         frames.append(soundData)
         # LOG.info("Read data from UDP socket")
 
@@ -161,6 +162,8 @@ class MutableUDPMicrophone(AudioSource):
 
 def get_silence(num_bytes):
     return b'\0' * num_bytes
+
+
 
 
 class ResponsiveRecognizer(speech_recognition.Recognizer):

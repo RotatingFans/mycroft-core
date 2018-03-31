@@ -28,8 +28,9 @@ from mycroft.util.format import nice_number
 from mycroft.util.log import LOG
 from mycroft.util.parse import extract_datetime, extractnumber, normalize
 from mycroft.util.signal import *
-
-
+from mycroft.audio import UDPAudio
+from pydub import AudioSegment
+import audioread
 def resolve_resource_file(res_name):
     """Convert a resource into an absolute filename.
 
@@ -77,24 +78,39 @@ def resolve_resource_file(res_name):
 
 
 def play_wav(uri):
+    LOG.info("Playing wav file")
     config = mycroft.configuration.Configuration.get()
     play_cmd = config.get("play_wav_cmdline")
     play_wav_cmd = str(play_cmd).split(" ")
     for index, cmd in enumerate(play_wav_cmd):
         if cmd == "%1":
             play_wav_cmd[index] = (get_http(uri))
+    LOG.info("Playing wav file" + str(get_http(uri)))
+
+    with audioread.audio_open(get_http(uri)) as f:
+        LOG.info(str(f.channels) + " " + str(f.samplerate) + " " + str(f.duration))
+
+        UDPAudio.playAudio(f)    #
     return subprocess.Popen(play_wav_cmd)
 
 
 def play_mp3(uri):
+    LOG.info("Playing mp3 file")
+
     config = mycroft.configuration.Configuration.get()
     play_cmd = config.get("play_mp3_cmdline")
     play_mp3_cmd = str(play_cmd).split(" ")
     for index, cmd in enumerate(play_mp3_cmd):
         if cmd == "%1":
             play_mp3_cmd[index] = (get_http(uri))
-    return subprocess.Popen(play_mp3_cmd)
+    LOG.info("Playing mp3 file" + str(get_http(uri)))
 
+    with audioread.audio_open(get_http(uri)) as f:
+        LOG.info(str(f.channels) + " " + str(f.samplerate) + " " + str(f.duration))
+
+        UDPAudio.playAudio(f)  #
+    #
+    return subprocess.Popen(play_mp3_cmd)
 
 def record(file_path, duration, rate, channels):
     if duration > 0:
